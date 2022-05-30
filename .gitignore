@@ -127,3 +127,9 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+**/spirvsmith_gcp.json
+**/.terraform*
+**/terraform.*
+!**/terraform.tfvars
+.vscode

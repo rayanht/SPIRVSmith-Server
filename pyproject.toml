@@ -1,0 +1,25 @@
+[tool.poetry]
+name = "spirvsmith-server"
+version = "0.1.0"
+description = ""
+authors = ["Rayan Hatout <rayan.hatout@gmail.com>"]
+
+[tool.poetry.dependencies]
+python = ">=3.10,<3.11"
+fastapi = "^0.78.0"
+google-cloud-bigquery = "^3.1.0"
+google-cloud-storage = "^2.2.1"
+firebase-admin = "^5.2.0"
+omegaconf = "^2.2.1"
+pydantic = "^1.9.1"
+uvicorn = "^0.17.6"
+vulkan-platform-py = "^0.3.1"
+pytest = "^7.1.2"
+coverage = "^6.4"
+
+[tool.poetry.dev-dependencies]
+black = "^22.3.0"
+
+[build-system]
+requires = ["poetry-core>=1.1.13"]
+build-backend = "poetry.core.masonry.api"
