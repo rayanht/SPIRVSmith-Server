@@ -13,9 +13,9 @@ firebase-admin = "^5.2.0"
 omegaconf = "^2.2.1"
 pydantic = "^1.9.1"
 uvicorn = "^0.17.6"
-vulkan-platform-py = "^0.3.1"
 pytest = "^7.1.2"
 coverage = "^6.4"
+vulkan-platform-py = "^0.4.0"
 
 [tool.poetry.dev-dependencies]
 black = "^22.3.0"

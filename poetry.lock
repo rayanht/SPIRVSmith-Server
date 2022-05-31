@@ -151,6 +151,17 @@ python-versions = ">=3.7"
 toml = ["tomli"]
 
 [[package]]
+name = "dill"
+version = "0.3.5.1"
+description = "serialize all of python"
+category = "main"
+optional = false
+python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*, !=3.5.*, !=3.6.*"
+
+[package.extras]
+graph = ["objgraph (>=1.7.2)"]
+
+[[package]]
 name = "fastapi"
 version = "0.78.0"
 description = "FastAPI framework, high performance, easy to learn, fast to code, ready for production"
@@ -797,13 +808,14 @@ standard = ["websockets (>=10.0)", "httptools (>=0.4.0)", "watchgod (>=0.6)", "p
 
 [[package]]
 name = "vulkan-platform-py"
-version = "0.3.1"
+version = "0.4.0"
 description = ""
 category = "main"
 optional = false
 python-versions = ">=3.10"
 
 [package.dependencies]
+dill = ">=0.3.5,<0.4.0"
 GPUtil = ">=1.4.0,<2.0.0"
 mypy = ">=0.960,<0.961"
 py-cpuinfo = ">=8.0.0,<9.0.0"
@@ -812,7 +824,7 @@ pydantic = ">=1.9.1,<2.0.0"
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.10,<3.11"
-content-hash = "5ae03f2eb35a9f05abe1af35651151146752fc3b83bd976c75c3326e135dba9b"
+content-hash = "e96623ceef320a20bc9362e096cacb33b9a092d0a9a8979f8fb78e2fc2689a61"
 
 [metadata.files]
 antlr4-python3-runtime = [
@@ -925,6 +937,10 @@ coverage = [
     {file = "coverage-6.4-cp39-cp39-win_amd64.whl", hash = "sha256:e35217031e4b534b09f9b9a5841b9344a30a6357627761d4218818b865d45055"},
     {file = "coverage-6.4-pp36.pp37.pp38-none-any.whl", hash = "sha256:e637ae0b7b481905358624ef2e81d7fb0b1af55f5ff99f9ba05442a444b11e45"},
     {file = "coverage-6.4.tar.gz", hash = "sha256:727dafd7f67a6e1cad808dc884bd9c5a2f6ef1f8f6d2f22b37b96cb0080d4f49"},
+]
+dill = [
+    {file = "dill-0.3.5.1-py2.py3-none-any.whl", hash = "sha256:33501d03270bbe410c72639b350e941882a8b0fd55357580fbc873fba0c59302"},
+    {file = "dill-0.3.5.1.tar.gz", hash = "sha256:d75e41f3eff1eee599d738e76ba8f4ad98ea229db8b085318aa2b3333a208c86"},
 ]
 fastapi = [
     {file = "fastapi-0.78.0-py3-none-any.whl", hash = "sha256:15fcabd5c78c266fa7ae7d8de9b384bfc2375ee0503463a6febbe3bab69d6f65"},
@@ -1425,6 +1441,6 @@ uvicorn = [
     {file = "uvicorn-0.17.6.tar.gz", hash = "sha256:5180f9d059611747d841a4a4c4ab675edf54c8489e97f96d0583ee90ac3bfc23"},
 ]
 vulkan-platform-py = [
-    {file = "vulkan-platform-py-0.3.1.tar.gz", hash = "sha256:8053dc29aaf94019b00fe16b8c190b0e8ee92b08a23069ff7a6a6637ab0083af"},
-    {file = "vulkan_platform_py-0.3.1-py3-none-any.whl", hash = "sha256:7e3e05567fa3e3a256a361780085c8b27df4c6fb68a1697949b78eab75a6910a"},
+    {file = "vulkan-platform-py-0.4.0.tar.gz", hash = "sha256:267587af40216c1e0602b837f77e82cbe48851989298c3254082923718b9327d"},
+    {file = "vulkan_platform_py-0.4.0-py3-none-any.whl", hash = "sha256:5495fa1ec3656ea837077e4cdc1fdd8dfecbe18107fe290eb1c0c1e838cb3bf9"},
 ]

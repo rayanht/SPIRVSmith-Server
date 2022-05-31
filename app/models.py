@@ -85,6 +85,7 @@ class ExecutionQueue(BaseModelORM):
 
 
 class BufferSubmission(BaseModelORM):
+    executor: ExecutionPlatform
     buffer_dump: str
 
 
@@ -95,6 +96,8 @@ class ExecutionQueues(BaseModelORM):
     )
 
     def new_execution_queue(self, executor: ExecutionPlatform) -> QueueID:
+        if executor in self._executor_lookup:
+            return self._executor_lookup[executor]
         queue_initializer: ExecutionQueue = ExecutionQueue(queue=deque())
         try:
             queue_initializer.queue = copy.deepcopy(

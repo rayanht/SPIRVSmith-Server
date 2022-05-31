@@ -218,7 +218,7 @@ def get_queues(broker: ShaderBroker = get_broker):
 
 
 @app.get("/queues/{queue_id}", response_model=ExecutionQueue)
-def get_queues(
+def get_queue(
     queue_id: QueueID = Path(title="The ID of the queue to get"),
     broker: ShaderBroker = get_broker,
 ):
@@ -227,12 +227,11 @@ def get_queues(
 
 @app.post("/buffers/{shader_id}")
 def submit_buffers(
-    buffers: BufferSubmission,
-    executor: ExecutionPlatform,
+    buffer_submission: BufferSubmission,
     shader_id: ShaderID = Path(title="The ID of the shader to get"),
     broker: ShaderBroker = get_broker,
     settings: Settings = Depends(get_settings),
 ):
     if settings.app_env != "dev":
-        broker.BQ_insert_shader_with_buffer_dump(shader_id, executor, buffers)
+        broker.BQ_insert_shader_with_buffer_dump(shader_id, buffer_submission.executor, buffer_submission)
     return 200
