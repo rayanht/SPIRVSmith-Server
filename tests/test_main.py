@@ -1,19 +1,12 @@
-from collections import deque
 import json
-from fastapi.testclient import TestClient
 
-from app.config import Settings
-from app.main import app, get_settings
-from app.models import (
-    ExecutionQueue,
-    ExecutionQueues,
-    QueueID,
-    RetrievedShader,
-    ShaderID,
-)
-from vulkan_platform_py import *
-from pydantic.json import pydantic_encoder
 from dummy_data import *
+from fastapi.testclient import TestClient
+from pydantic.json import pydantic_encoder
+from vulkan_platform_py import *
+
+from app.main import app
+from app.models import ExecutionQueue, ExecutionQueues, QueueID, ShaderData, ShaderID
 
 
 def test_execution_queue_created():
@@ -186,7 +179,7 @@ def test_shader_popped_from_queue():
             "/shaders",
             data=json.dumps(dummy_shader_submission1, default=pydantic_encoder),
         ).json()
-        retrieved_shader: RetrievedShader = RetrievedShader(
+        retrieved_shader: ShaderData = ShaderData(
             **client.post(
                 "/shaders/next",
                 data=json.dumps(dummy_executor1, default=pydantic_encoder),
@@ -214,14 +207,14 @@ def test_priority_shader_gets_popped_first():
                 dummy_shader_submission_prioritized, default=pydantic_encoder
             ),
         ).json()
-        retrieved_shader: RetrievedShader = RetrievedShader(
+        retrieved_shader: ShaderData = ShaderData(
             **client.post(
                 "/shaders/next",
                 data=json.dumps(dummy_executor1, default=pydantic_encoder),
             ).json()
         )
         assert retrieved_shader.shader_id == shader_id_prioritized
-        retrieved_shader: RetrievedShader = RetrievedShader(
+        retrieved_shader: ShaderData = ShaderData(
             **client.post(
                 "/shaders/next",
                 data=json.dumps(dummy_executor1, default=pydantic_encoder),
@@ -254,3 +247,68 @@ def test_shaders_submitted_before_executors_are_buffered():
         )
         assert shader_id1 in shaders_ids_in_queue
         assert shader_id2 in shaders_ids_in_queue
+
+
+def test_mismatched_buffer_dumps_are_recorded_in_mismatches_queue():
+    with TestClient(app) as client:
+        client.put(
+            "/queues", data=json.dumps(dummy_executor1, default=pydantic_encoder)
+        ).json()
+        client.put(
+            "/queues", data=json.dumps(dummy_executor2, default=pydantic_encoder)
+        ).json()
+        shader_id: ShaderID = client.post(
+            "/shaders",
+            data=json.dumps(dummy_shader_submission1, default=pydantic_encoder),
+        ).json()
+        client.post(
+            "/shaders/next", data=json.dumps(dummy_executor1, default=pydantic_encoder)
+        )
+        dummy_buffer_submission1: BufferSubmission = create_dummy_buffer_submission(
+            executor=dummy_executor1, value="0"
+        )
+        dummy_buffer_submission2: BufferSubmission = create_dummy_buffer_submission(
+            executor=dummy_executor2, value="1"
+        )
+        client.post(
+            f"/buffers/{shader_id}",
+            data=json.dumps(dummy_buffer_submission1, default=pydantic_encoder),
+        )
+        client.post(
+            f"/buffers/{shader_id}",
+            data=json.dumps(dummy_buffer_submission2, default=pydantic_encoder),
+        )
+        mismatched_shaders: list[ShaderID] = client.get("/shaders/mismatches").json()
+        assert shader_id in mismatched_shaders
+
+def test_matching_buffer_dumps_noy_recorded_in_mismatches_queue():
+    with TestClient(app) as client:
+        client.put(
+            "/queues", data=json.dumps(dummy_executor1, default=pydantic_encoder)
+        ).json()
+        client.put(
+            "/queues", data=json.dumps(dummy_executor2, default=pydantic_encoder)
+        ).json()
+        shader_id: ShaderID = client.post(
+            "/shaders",
+            data=json.dumps(dummy_shader_submission1, default=pydantic_encoder),
+        ).json()
+        client.post(
+            "/shaders/next", data=json.dumps(dummy_executor1, default=pydantic_encoder)
+        )
+        dummy_buffer_submission1: BufferSubmission = create_dummy_buffer_submission(
+            executor=dummy_executor1, value="0"
+        )
+        dummy_buffer_submission2: BufferSubmission = create_dummy_buffer_submission(
+            executor=dummy_executor2, value="0"
+        )
+        client.post(
+            f"/buffers/{shader_id}",
+            data=json.dumps(dummy_buffer_submission1, default=pydantic_encoder),
+        )
+        client.post(
+            f"/buffers/{shader_id}",
+            data=json.dumps(dummy_buffer_submission2, default=pydantic_encoder),
+        )
+        mismatched_shaders: list[ShaderID] = client.get("/shaders/mismatches").json()
+        assert shader_id not in mismatched_shaders

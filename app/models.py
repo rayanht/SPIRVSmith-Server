@@ -1,20 +1,21 @@
 import copy
-from fastapi import HTTPException
+from collections import deque
 from typing import Optional, TypeAlias
 from uuid import uuid4
-from pydantic import BaseModel, PrivateAttr, Field
-from collections import deque
-from vulkan_platform_py import ExecutionPlatform
 
+from fastapi import HTTPException
+from pydantic import BaseModel, Extra, Field, PrivateAttr
+from vulkan_platform_py import ExecutionPlatform
 
 GeneratorID: TypeAlias = str
 ShaderID: TypeAlias = str
 QueueID: TypeAlias = str
 
 
-class BaseModelORM(BaseModel):
+class BaseModelWithConfig(BaseModel):
     class Config:
         orm_mode: bool = True
+        extra: Extra = Extra.ignore
 
 
 class MetadataTag(BaseModel):
@@ -27,7 +28,7 @@ class BoundedInt(BaseModel):
     max: int
 
 
-class MutationsConfig(BaseModelORM):
+class MutationsConfig(BaseModelWithConfig):
     w_memory_operation: BoundedInt
     w_logical_operation: BoundedInt
     w_arithmetic_operation: BoundedInt
@@ -44,7 +45,7 @@ class MutationsConfig(BaseModelORM):
     w_scalar_constant: BoundedInt
 
 
-class FuzzingStrategy(BaseModelORM):
+class FuzzingStrategy(BaseModelWithConfig):
     mutations_config: MutationsConfig
 
     enable_ext_glsl_std_450: bool
@@ -70,42 +71,41 @@ class FuzzingStrategy(BaseModelORM):
     mutation_rate: float
 
 
-class GeneratorInfo(BaseModelORM):
+class GeneratorInfo(BaseModelWithConfig):
     id: GeneratorID
     fuzzer_version: str
     strategy: Optional[FuzzingStrategy] = None
 
 
-class BaseShader(BaseModelORM):
+class ShaderData(BaseModelWithConfig):
     shader_id: ShaderID
     shader_assembly: str
     generator_info: GeneratorInfo
 
 
-class ShaderSubmission(BaseShader):
+class ShaderSubmission(ShaderData):
     prioritize: bool
     n_buffers: int
 
 
-class RetrievedShader(BaseShader):
-    ...
-
-
-class ExecutionQueue(BaseModelORM):
+class ExecutionQueue(BaseModelWithConfig):
     queue: deque[ShaderSubmission]
 
 
-class BufferSubmission(BaseModelORM):
+class BufferSubmission(BaseModelWithConfig):
     executor: ExecutionPlatform
     buffer_dump: str
 
 
-class ExecutionQueues(BaseModelORM):
+class ExecutionQueues(BaseModelWithConfig):
     queues: dict[QueueID, ExecutionQueue] = Field(default_factory=dict)
     _executor_lookup: dict[ExecutionPlatform, QueueID] = PrivateAttr(
         default_factory=dict
     )
     _buffer_queue: ExecutionQueue = PrivateAttr(
+        default_factory=lambda: ExecutionQueue(queue=deque())
+    )
+    _mismatch_queue: ExecutionQueue = PrivateAttr(
         default_factory=lambda: ExecutionQueue(queue=deque())
     )
 

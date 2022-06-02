@@ -1,6 +1,6 @@
 from vulkan_platform_py import *
 
-from app.models import GeneratorInfo, ShaderSubmission
+from app.models import BufferSubmission, GeneratorInfo, ShaderSubmission
 
 dummy_executor1: ExecutionPlatform = ExecutionPlatform(
     VulkanBackend.Vulkan,
@@ -53,3 +53,9 @@ dummy_shader_submission_prioritized: ShaderSubmission = ShaderSubmission(
     prioritize=True,
     n_buffers=1,
 )
+
+
+def create_dummy_buffer_submission(
+    executor: ExecutionPlatform, value: str
+) -> BufferSubmission:
+    return BufferSubmission(executor=executor, buffer_dump=value)
