@@ -1,7 +1,8 @@
 import copy
+from fastapi import HTTPException
 from typing import Optional, TypeAlias
 from uuid import uuid4
-from pydantic import BaseModel, PrivateAttr
+from pydantic import BaseModel, PrivateAttr, Field
 from collections import deque
 from vulkan_platform_py import ExecutionPlatform
 
@@ -16,21 +17,31 @@ class BaseModelORM(BaseModel):
         orm_mode: bool = True
 
 
+class MetadataTag(BaseModel):
+    name: str
+    description: str
+
+
+class BoundedInt(BaseModel):
+    min: int
+    max: int
+
+
 class MutationsConfig(BaseModelORM):
-    w_memory_operation: tuple[int, int]
-    w_logical_operation: tuple[int, int]
-    w_arithmetic_operation: tuple[int, int]
-    w_control_flow_operation: tuple[int, int]
-    w_function_operation: tuple[int, int]
-    w_bitwise_operation: tuple[int, int]
-    w_conversion_operation: tuple[int, int]
-    w_composite_operation: tuple[int, int]
+    w_memory_operation: BoundedInt
+    w_logical_operation: BoundedInt
+    w_arithmetic_operation: BoundedInt
+    w_control_flow_operation: BoundedInt
+    w_function_operation: BoundedInt
+    w_bitwise_operation: BoundedInt
+    w_conversion_operation: BoundedInt
+    w_composite_operation: BoundedInt
 
-    w_scalar_type: tuple[int, int]
-    w_container_type: tuple[int, int]
+    w_scalar_type: BoundedInt
+    w_container_type: BoundedInt
 
-    w_composite_constant: tuple[int, int]
-    w_scalar_constant: tuple[int, int]
+    w_composite_constant: BoundedInt
+    w_scalar_constant: BoundedInt
 
 
 class FuzzingStrategy(BaseModelORM):
@@ -90,9 +101,12 @@ class BufferSubmission(BaseModelORM):
 
 
 class ExecutionQueues(BaseModelORM):
-    queues: dict[QueueID, ExecutionQueue]
+    queues: dict[QueueID, ExecutionQueue] = Field(default_factory=dict)
     _executor_lookup: dict[ExecutionPlatform, QueueID] = PrivateAttr(
         default_factory=dict
+    )
+    _buffer_queue: ExecutionQueue = PrivateAttr(
+        default_factory=lambda: ExecutionQueue(queue=deque())
     )
 
     def new_execution_queue(self, executor: ExecutionPlatform) -> QueueID:
@@ -100,14 +114,7 @@ class ExecutionQueues(BaseModelORM):
             return self._executor_lookup[executor]
         queue_initializer: ExecutionQueue = ExecutionQueue(queue=deque())
         try:
-            queue_initializer.queue = copy.deepcopy(
-                self.queues[
-                    max(
-                        self.queues,
-                        key=lambda x: len(self.queues[x].queue),
-                    )
-                ].queue
-            )
+            queue_initializer.queue = copy.deepcopy(self._buffer_queue.queue)
         except ValueError:
             pass
         self._executor_lookup[executor] = str(uuid4())
@@ -121,6 +128,7 @@ class ExecutionQueues(BaseModelORM):
         return self.queues[queue_id].queue
 
     def enqueue(self, shader: ShaderSubmission) -> None:
+        self._buffer_queue.queue.append(shader)
         for execution_queue in self.queues.values():
             if shader.prioritize:
                 execution_queue.queue.appendleft(shader)
@@ -128,8 +136,13 @@ class ExecutionQueues(BaseModelORM):
                 execution_queue.queue.append(shader)
 
     def get_next_shader(self, executor: ExecutionPlatform) -> ShaderSubmission:
+        if executor not in self._executor_lookup:
+            self.new_execution_queue(executor)
         queue_id: QueueID = self._executor_lookup[executor]
-        return self.queues[queue_id].queue.popleft()
+        try:
+            return self.queues[queue_id].queue.popleft()
+        except IndexError:
+            raise HTTPException(status_code=404)
 
     def flush(self) -> None:
         for execution_queue in self.queues.values():

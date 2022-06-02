@@ -4,6 +4,7 @@ from fastapi import BackgroundTasks, Depends, FastAPI, Path
 import contextlib
 from typing import Any, AsyncGenerator, AsyncIterator, Callable
 import fastapi
+from fastapi.routing import APIRoute
 import firebase_admin
 from firebase_admin import firestore
 from google.cloud import bigquery
@@ -14,6 +15,7 @@ from app.models import (
     ExecutionQueue,
     ExecutionQueues,
     GeneratorInfo,
+    MetadataTag,
     QueueID,
     RetrievedShader,
     ShaderID,
@@ -21,7 +23,38 @@ from app.models import (
 )
 from vulkan_platform_py import ExecutionPlatform
 
-app = FastAPI()
+shaders_tag = MetadataTag(
+    name="shaders", description="Endpoints related to the brokerage of shaders."
+)
+
+queues_tag = MetadataTag(
+    name="queues",
+    description="Endpoints related to the management of execution queues.",
+)
+
+generators_tag = MetadataTag(
+    name="generators", description="Endpoints related to generators."
+)
+
+buffers_tag = MetadataTag(
+    name="buffers", description="Endpoints related to the management of buffers dumps."
+)
+
+metadata_tags = [shaders_tag, queues_tag, generators_tag, buffers_tag]
+
+
+app = FastAPI(
+    title="spirvsmith-server",
+    version="0.1.0",
+    openapi_tags=[tag.dict() for tag in metadata_tags],
+    contact={
+        "name": "Rayan Hatout",
+    },
+    license_info={
+        "name": "Apache 2.0",
+        "url": "https://www.apache.org/licenses/LICENSE-2.0.html",
+    },
+)
 
 
 @lru_cache()
@@ -102,7 +135,7 @@ class ShaderBroker:
             self.GCS_bucket = self.GCS_client.get_bucket("spirv_shaders_bucket")
             self.BQ_client = bigquery.Client()
             self.FS_client = firestore.client()
-        self.execution_queues = ExecutionQueues(queues={})
+        self.execution_queues = ExecutionQueues()
 
     async def shutdown(self, settings: Settings = get_settings()):
         if settings.app_env != "dev":
@@ -147,12 +180,7 @@ async def get_broker() -> AsyncIterator[ShaderBroker]:
     await broker.shutdown()
 
 
-@app.get("/")
-async def root():
-    return {"message": "Hello World"}
-
-
-@app.post("/shaders")
+@app.post("/shaders", tags=["shaders"])
 def submit_shader(
     shader: ShaderSubmission,
     background_tasks: BackgroundTasks,
@@ -165,8 +193,8 @@ def submit_shader(
     return shader.shader_id
 
 
-@app.get("/shaders/{shader_id}", response_model=RetrievedShader)
-async def get_shader(
+@app.get("/shaders/{shader_id}", response_model=RetrievedShader, tags=["shaders"])
+async def get_hader(
     shader_id: ShaderID = Path(title="The ID of the shader to get"),
     broker: ShaderBroker = get_broker,
 ):
@@ -174,7 +202,7 @@ async def get_shader(
     return RetrievedShader(shader_id=shader_id, shader_assembly=shader_assembly)
 
 
-@app.post("/next_shader", response_model=RetrievedShader)
+@app.post("/shaders/next", response_model=RetrievedShader, tags=["shaders"])
 def get_next_shader(executor: ExecutionPlatform, broker: ShaderBroker = get_broker):
     shader: ShaderSubmission = broker.execution_queues.get_next_shader(executor)
     return RetrievedShader(
@@ -184,7 +212,7 @@ def get_next_shader(executor: ExecutionPlatform, broker: ShaderBroker = get_brok
     )
 
 
-@app.post("/generators")
+@app.post("/generators", tags=["generators"])
 def register_generator(
     generator: GeneratorInfo,
     broker: ShaderBroker = get_broker,
@@ -198,7 +226,7 @@ def register_generator(
     return 200
 
 
-@app.post("/executors")
+@app.put("/queues", tags=["queues"])
 def register_executor(
     executor: ExecutionPlatform,
     broker: ShaderBroker = get_broker,
@@ -206,18 +234,18 @@ def register_executor(
     return broker.execution_queues.new_execution_queue(executor)
 
 
-@app.delete("/queues")
-def flush_queues(broker: ShaderBroker = get_broker):
+@app.delete("/queues", tags=["queues"])
+def delete_queues(broker: ShaderBroker = get_broker):
     broker.execution_queues.flush()
     return 200
 
 
-@app.get("/queues", response_model=ExecutionQueues)
+@app.get("/queues", response_model=ExecutionQueues, tags=["queues"])
 def get_queues(broker: ShaderBroker = get_broker):
     return broker.execution_queues
 
 
-@app.get("/queues/{queue_id}", response_model=ExecutionQueue)
+@app.get("/queues/{queue_id}", response_model=ExecutionQueue, tags=["queues"])
 def get_queue(
     queue_id: QueueID = Path(title="The ID of the queue to get"),
     broker: ShaderBroker = get_broker,
@@ -225,13 +253,30 @@ def get_queue(
     return broker.execution_queues.queues[queue_id]
 
 
-@app.post("/buffers/{shader_id}")
-def submit_buffers(
+@app.post("/buffers/{shader_id}", tags=["buffers"])
+def post_buffers(
     buffer_submission: BufferSubmission,
     shader_id: ShaderID = Path(title="The ID of the shader to get"),
     broker: ShaderBroker = get_broker,
     settings: Settings = Depends(get_settings),
 ):
     if settings.app_env != "dev":
-        broker.BQ_insert_shader_with_buffer_dump(shader_id, buffer_submission.executor, buffer_submission)
+        broker.BQ_insert_shader_with_buffer_dump(
+            shader_id, buffer_submission.executor, buffer_submission
+        )
     return 200
+
+
+def use_route_names_as_operation_ids(app: FastAPI) -> None:
+    """
+    Simplify operation IDs so that generated API clients have simpler function
+    names.
+
+    Should be called only after all routes have been added.
+    """
+    for route in app.routes:
+        if isinstance(route, APIRoute):
+            route.operation_id = route.name
+
+
+use_route_names_as_operation_ids(app)

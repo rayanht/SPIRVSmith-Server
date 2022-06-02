@@ -22,8 +22,8 @@ def test_execution_queue_created():
             **client.get("/queues").json()
         )
         assert execution_queues.queues == {}
-        queue_id: QueueID = client.post(
-            "/executors", data=json.dumps(dummy_executor1, default=pydantic_encoder)
+        queue_id: QueueID = client.put(
+            "/queues", data=json.dumps(dummy_executor1, default=pydantic_encoder)
         ).json()
         execution_queues: ExecutionQueues = ExecutionQueues(
             **client.get("/queues").json()
@@ -33,11 +33,11 @@ def test_execution_queue_created():
 
 def test_multiple_execution_queues_created():
     with TestClient(app) as client:
-        queue1_id: QueueID = client.post(
-            "/executors", data=json.dumps(dummy_executor1, default=pydantic_encoder)
+        queue1_id: QueueID = client.put(
+            "/queues", data=json.dumps(dummy_executor1, default=pydantic_encoder)
         ).json()
-        queue2_id: QueueID = client.post(
-            "/executors", data=json.dumps(dummy_executor2, default=pydantic_encoder)
+        queue2_id: QueueID = client.put(
+            "/queues", data=json.dumps(dummy_executor2, default=pydantic_encoder)
         ).json()
         execution_queues: ExecutionQueues = ExecutionQueues(
             **client.get("/queues").json()
@@ -46,10 +46,21 @@ def test_multiple_execution_queues_created():
         assert queue2_id in execution_queues.queues
 
 
+def test_execution_queue_creation_idempotence():
+    with TestClient(app) as client:
+        queue1_id: QueueID = client.put(
+            "/queues", data=json.dumps(dummy_executor1, default=pydantic_encoder)
+        ).json()
+        queue2_id: QueueID = client.put(
+            "/queues", data=json.dumps(dummy_executor1, default=pydantic_encoder)
+        ).json()
+        assert queue1_id == queue2_id
+
+
 def test_single_shader_submitted_to_single_execution_queue():
     with TestClient(app) as client:
-        queue_id: QueueID = client.post(
-            "/executors", data=json.dumps(dummy_executor1, default=pydantic_encoder)
+        queue_id: QueueID = client.put(
+            "/queues", data=json.dumps(dummy_executor1, default=pydantic_encoder)
         ).json()
         shader_id: ShaderID = client.post(
             "/shaders",
@@ -63,11 +74,11 @@ def test_single_shader_submitted_to_single_execution_queue():
 
 def test_single_shader_submitted_to_multiple_execution_queues():
     with TestClient(app) as client:
-        queue1_id: QueueID = client.post(
-            "/executors", data=json.dumps(dummy_executor1, default=pydantic_encoder)
+        queue1_id: QueueID = client.put(
+            "/queues", data=json.dumps(dummy_executor1, default=pydantic_encoder)
         ).json()
-        queue2_id: QueueID = client.post(
-            "/executors", data=json.dumps(dummy_executor1, default=pydantic_encoder)
+        queue2_id: QueueID = client.put(
+            "/queues", data=json.dumps(dummy_executor1, default=pydantic_encoder)
         ).json()
         shader_id: ShaderID = client.post(
             "/shaders",
@@ -85,8 +96,8 @@ def test_single_shader_submitted_to_multiple_execution_queues():
 
 def test_multiple_shaders_submitted_to_single_execution_queue():
     with TestClient(app) as client:
-        queue_id: QueueID = client.post(
-            "/executors", data=json.dumps(dummy_executor1, default=pydantic_encoder)
+        queue_id: QueueID = client.put(
+            "/queues", data=json.dumps(dummy_executor1, default=pydantic_encoder)
         ).json()
         shader_id1: ShaderID = client.post(
             "/shaders",
@@ -108,11 +119,11 @@ def test_multiple_shaders_submitted_to_single_execution_queue():
 
 def test_multiple_shaders_submitted_to_multiple_execution_queues():
     with TestClient(app) as client:
-        queue1_id: QueueID = client.post(
-            "/executors", data=json.dumps(dummy_executor1, default=pydantic_encoder)
+        queue1_id: QueueID = client.put(
+            "/queues", data=json.dumps(dummy_executor1, default=pydantic_encoder)
         ).json()
-        queue2_id: QueueID = client.post(
-            "/executors", data=json.dumps(dummy_executor1, default=pydantic_encoder)
+        queue2_id: QueueID = client.put(
+            "/queues", data=json.dumps(dummy_executor1, default=pydantic_encoder)
         ).json()
         shader_id1: ShaderID = client.post(
             "/shaders",
@@ -140,10 +151,10 @@ def test_multiple_shaders_submitted_to_multiple_execution_queues():
         assert shader_id2 in shaders_ids_in_queue2
 
 
-def test_new_queue_is_populated_from_other_queues():
+def test_new_queue_is_populated_from_buffer_queue():
     with TestClient(app) as client:
-        client.post(
-            "/executors", data=json.dumps(dummy_executor1, default=pydantic_encoder)
+        client.put(
+            "/queues", data=json.dumps(dummy_executor1, default=pydantic_encoder)
         ).json()
         shader_id1: ShaderID = client.post(
             "/shaders",
@@ -153,8 +164,8 @@ def test_new_queue_is_populated_from_other_queues():
             "/shaders",
             data=json.dumps(dummy_shader_submission2, default=pydantic_encoder),
         ).json()
-        queue_id: QueueID = client.post(
-            "/executors", data=json.dumps(dummy_executor1, default=pydantic_encoder)
+        queue_id: QueueID = client.put(
+            "/queues", data=json.dumps(dummy_executor1, default=pydantic_encoder)
         ).json()
         execution_queue: ExecutionQueue = ExecutionQueue(
             **client.get(f"/queues/{queue_id}").json()
@@ -168,8 +179,8 @@ def test_new_queue_is_populated_from_other_queues():
 
 def test_shader_popped_from_queue():
     with TestClient(app) as client:
-        queue_id: QueueID = client.post(
-            "/executors", data=json.dumps(dummy_executor1, default=pydantic_encoder)
+        queue_id: QueueID = client.put(
+            "/queues", data=json.dumps(dummy_executor1, default=pydantic_encoder)
         ).json()
         shader_id: ShaderID = client.post(
             "/shaders",
@@ -177,7 +188,7 @@ def test_shader_popped_from_queue():
         ).json()
         retrieved_shader: RetrievedShader = RetrievedShader(
             **client.post(
-                "/next_shader",
+                "/shaders/next",
                 data=json.dumps(dummy_executor1, default=pydantic_encoder),
             ).json()
         )
@@ -190,8 +201,8 @@ def test_shader_popped_from_queue():
 
 def test_priority_shader_gets_popped_first():
     with TestClient(app) as client:
-        queue_id: QueueID = client.post(
-            "/executors", data=json.dumps(dummy_executor1, default=pydantic_encoder)
+        client.put(
+            "/queues", data=json.dumps(dummy_executor1, default=pydantic_encoder)
         ).json()
         shader_id_unprioritized: ShaderID = client.post(
             "/shaders",
@@ -205,15 +216,41 @@ def test_priority_shader_gets_popped_first():
         ).json()
         retrieved_shader: RetrievedShader = RetrievedShader(
             **client.post(
-                "/next_shader",
+                "/shaders/next",
                 data=json.dumps(dummy_executor1, default=pydantic_encoder),
             ).json()
         )
         assert retrieved_shader.shader_id == shader_id_prioritized
         retrieved_shader: RetrievedShader = RetrievedShader(
             **client.post(
-                "/next_shader",
+                "/shaders/next",
                 data=json.dumps(dummy_executor1, default=pydantic_encoder),
             ).json()
         )
         assert retrieved_shader.shader_id == shader_id_unprioritized
+
+
+def test_shaders_submitted_before_executors_are_buffered():
+    with TestClient(app) as client:
+        shader_id1: ShaderID = client.post(
+            "/shaders",
+            data=json.dumps(dummy_shader_submission1, default=pydantic_encoder),
+        ).json()
+        shader_id2: ShaderID = client.post(
+            "/shaders",
+            data=json.dumps(dummy_shader_submission2, default=pydantic_encoder),
+        ).json()
+        client.put(
+            "/queues", data=json.dumps(dummy_executor1, default=pydantic_encoder)
+        ).json()
+        queue_id: QueueID = client.put(
+            "/queues", data=json.dumps(dummy_executor1, default=pydantic_encoder)
+        ).json()
+        execution_queue: ExecutionQueue = ExecutionQueue(
+            **client.get(f"/queues/{queue_id}").json()
+        )
+        shaders_ids_in_queue: set[ShaderID] = set(
+            map(lambda s: s.shader_id, execution_queue.queue)
+        )
+        assert shader_id1 in shaders_ids_in_queue
+        assert shader_id2 in shaders_ids_in_queue
