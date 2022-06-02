@@ -222,7 +222,7 @@ def register_generator(
         document_reference = broker.FS_client.collection("configurations").document(
             generator.id
         )
-        document_reference.set(generator.strategy)
+        document_reference.set(generator.strategy.dict())
     return 200
 
 
