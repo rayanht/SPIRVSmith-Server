@@ -23,64 +23,10 @@ class MetadataTag(BaseModel):
     description: str
 
 
-class BoundedInt(BaseModel):
-    min: int
-    max: int
-
-
-class MutationsConfig(BaseModelWithConfig):
-    w_memory_operation: BoundedInt
-    w_logical_operation: BoundedInt
-    w_arithmetic_operation: BoundedInt
-    w_control_flow_operation: BoundedInt
-    w_function_operation: BoundedInt
-    w_bitwise_operation: BoundedInt
-    w_conversion_operation: BoundedInt
-    w_composite_operation: BoundedInt
-
-    w_scalar_type: BoundedInt
-    w_container_type: BoundedInt
-
-    w_composite_constant: BoundedInt
-    w_scalar_constant: BoundedInt
-
-
-class FuzzingStrategy(BaseModelWithConfig):
-    mutations_config: MutationsConfig
-
-    enable_ext_glsl_std_450: bool
-
-    w_memory_operation: int
-    w_logical_operation: int
-    w_arithmetic_operation: int
-    w_control_flow_operation: int
-    w_function_operation: int
-    w_bitwise_operation: int
-    w_conversion_operation: int
-    w_composite_operation: int
-
-    w_scalar_type: int
-    w_container_type: int
-
-    w_composite_constant: int
-    w_scalar_constant: int
-
-    p_statement: float
-    p_picking_statement_operand: float
-
-    mutation_rate: float
-
-
-class GeneratorInfo(BaseModelWithConfig):
-    id: GeneratorID
-    fuzzer_version: str
-    strategy: Optional[FuzzingStrategy] = None
-
-
 class ShaderData(BaseModelWithConfig):
     shader_id: ShaderID
     shader_assembly: str
-    generator_info: GeneratorInfo
+    generator_version: str
 
 
 class ShaderSubmission(ShaderData):

@@ -16,7 +16,6 @@ from app.models import (
     BufferSubmission,
     ExecutionQueue,
     ExecutionQueues,
-    GeneratorInfo,
     MetadataTag,
     QueueID,
     ShaderData,
@@ -188,20 +187,6 @@ def get_next_mismatch(broker: ShaderBroker = get_broker):
     shader_id: ShaderID = broker.get_next_mismatch()
     shader_assembly: str = broker.GCS_download_shader(shader_id)
     return ShaderData(shader_id=shader_id, shader_assembly=shader_assembly)
-
-
-@app.post("/generators", tags=["generators"])
-def register_generator(
-    generator: GeneratorInfo,
-    broker: ShaderBroker = get_broker,
-    settings: Settings = Depends(get_settings),
-):
-    if settings.app_env != "dev":
-        document_reference = broker.FS_client.collection("configurations").document(
-            generator.id
-        )
-        document_reference.set(generator.strategy.dict())
-    return 200
 
 
 @app.put("/queues", tags=["queues"])
